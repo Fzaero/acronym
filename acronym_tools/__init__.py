@@ -22,3 +22,4 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 from .acronym import *
+from .acronym_renderer import *

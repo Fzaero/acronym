@@ -28,6 +28,7 @@ import trimesh
 import trimesh.path
 import trimesh.transformations as tra
 import numpy as np
+from shapely.geometry import Point
 
 
 class Scene(object):

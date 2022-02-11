@@ -32,33 +32,6 @@ import matplotlib.pyplot as plt
 
 from acronym_tools import Scene, load_mesh, create_gripper_marker
 
-
-def make_parser():
-    parser = argparse.ArgumentParser(
-        description="Render observations of a randomly generated scene.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument("--objects", nargs="+", help="HDF5 or JSON Object file(s).")
-    parser.add_argument(
-        "--support",
-        required=True,
-        type=str,
-        help="HDF5 or JSON File for support object.",
-    )
-    parser.add_argument(
-        "--support_scale", default=0.025, help="Scale factor of support mesh."
-    )
-    parser.add_argument(
-        "--mesh_root", default=".", help="Directory used for loading meshes."
-    )
-    parser.add_argument(
-        "--show_scene",
-        action="store_true",
-        help="Show the scene and camera pose from which observations are rendered.",
-    )
-    return parser
-
-
 class PyrenderScene(Scene):
     def as_pyrender_scene(self):
         """Return pyrender scene representation.
@@ -259,60 +232,3 @@ class SceneRenderer:
             pc = None
 
         return color, depth, pc, segmentation
-
-def main(argv=sys.argv[1:]):
-    parser = make_parser()
-    args = parser.parse_args(argv)
-
-    # load object meshes and generate a random scene
-    object_meshes = [load_mesh(o, mesh_root_dir=args.mesh_root) for o in args.objects]
-    support_mesh = load_mesh(
-        args.support, mesh_root_dir=args.mesh_root, scale=args.support_scale
-    )
-    scene = PyrenderScene.random_arrangement(object_meshes, support_mesh)
-
-    target_obj = "obj0"
-
-    # choose camera intrinsics and extrinsics
-    renderer = SceneRenderer(scene)
-    trimesh_camera = renderer.get_trimesh_camera()
-    camera_pose = trimesh_camera.look_at(
-        points=[scene.get_transform(target_obj, frame="com")[:3, 3]],
-        rotation=trimesh.transformations.euler_matrix(
-            np.random.uniform(low=np.pi / 4, high=np.pi / 3),
-            0,
-            np.random.uniform(low=-np.pi, high=np.pi),
-        ),
-        distance=np.random.uniform(low=0.7, high=0.9),
-    )
-
-    if args.show_scene:
-        # show scene, including a marker representing the camera
-        trimesh_scene = scene.colorize({target_obj: [255, 0, 0]}).as_trimesh_scene()
-        trimesh_scene.add_geometry(
-            trimesh.creation.camera_marker(trimesh_camera),
-            node_name="camera",
-            transform=camera_pose.dot(
-                trimesh.transformations.euler_matrix(np.pi, 0, 0)
-            ),
-        )
-        trimesh_scene.show()
-
-    # render observations
-    color, depth, pc, segmentation = renderer.render(
-        camera_pose=camera_pose, target_id=target_obj
-    )
-
-    # plot everything except point cloud
-    f, axarr = plt.subplots(1, 3)
-    im = axarr[0].imshow(color)
-    f.colorbar(im, ax=axarr[0])
-    im = axarr[1].imshow(depth)
-    f.colorbar(im, ax=axarr[1])
-    im = axarr[2].imshow(segmentation)
-    f.colorbar(im, ax=axarr[2])
-    plt.show()
-
-
-if __name__ == "__main__":
-    main()
